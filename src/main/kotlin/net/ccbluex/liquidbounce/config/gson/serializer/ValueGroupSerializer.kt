@@ -87,35 +87,11 @@ class ValueGroupSerializer(
     ) = JsonObject().apply {
         addProperty("name", src.name)
         try {
-
-            val values = src.inner.filter { includeNotAnOption || !it.notAnOption }
-                .filter {
-                    includePrivate || checkIfInclude(it)
-                }
+            val values = filterValues(src)
 
             if (withValueType) {
-                // For interop communication, add translation
                 add("value", context.serialize(values.map { value ->
-                    val jsonObject = context.serialize(value).asJsonObject
-                    if (value is ValueGroup) {
-                        // ValueGroup already has its own translation
-                        jsonObject
-                    } else {
-                        // Add translatedName for Value objects
-                        // Translation key format: liquidbounce.module.{module}.value.{value}.name
-                        val translationKey = value.key?.let { key ->
-                            // Insert .value. after .module.
-                            key.replaceFirst(Regex("(.module.)"), "$1value.")
-                        }?.let { "$it.name" }
-                        if (translationKey != null) {
-                            val translation = net.ccbluex.liquidbounce.lang.translation(translationKey)
-                            // Check if translation is available (not the same as the key)
-                            if (translation.string != translationKey) {
-                                jsonObject.addProperty("translatedName", translation.string)
-                            }
-                        }
-                        jsonObject
-                    }
+                    serializeValueWithTranslation(value, context)
                 }))
             } else {
                 add("value", context.serialize(values))
@@ -127,6 +103,49 @@ class ValueGroupSerializer(
         if (withValueType) {
             add("valueType", context.serialize(src.valueType))
         }
+    }
+
+    /**
+     * Filters values based on the serializer configuration
+     */
+    private fun filterValues(src: ValueGroup): List<Value<*>> {
+        return src.inner
+            .filter { includeNotAnOption || !it.notAnOption }
+            .filter { includePrivate || checkIfInclude(it) }
+    }
+
+    /**
+     * Serializes a value with translation for interop communication
+     */
+    private fun serializeValueWithTranslation(
+        value: Value<*>,
+        context: JsonSerializationContext
+    ): JsonObject {
+        val jsonObject = context.serialize(value).asJsonObject
+
+        if (value is ValueGroup) {
+            return jsonObject
+        }
+
+        val translationKey = buildTranslationKey(value)
+        if (translationKey != null) {
+            val translation = net.ccbluex.liquidbounce.lang.translation(translationKey)
+            if (translation.string != translationKey) {
+                jsonObject.addProperty("translatedName", translation.string)
+            }
+        }
+
+        return jsonObject
+    }
+
+    /**
+     * Builds the translation key for a value
+     * Translation key format: liquidbounce.module.{module}.value.{value}.name
+     */
+    private fun buildTranslationKey(value: Value<*>): String? {
+        return value.key
+            ?.let { key -> key.replaceFirst(Regex("(.module.)"), "$1value.") }
+            ?.let { "$it.name" }
     }
 
     /**
