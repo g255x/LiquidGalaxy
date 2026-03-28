@@ -82,7 +82,7 @@
 
         <div class="social-buttons" transition:fly|global={{duration: 700, y: 100}}>
             <ButtonContainer>
-                <IconButton title="GitHub" icon="github" on:click={() => browsePath("https://github.com/CCBlueX/LiquidBounce")}/>
+                <IconButton title="GitHub" icon="github" on:click={() => browsePath("https://github.com/g255x/LiquidGalaxy")}/>
             </ButtonContainer>
         </div>
     </div>
